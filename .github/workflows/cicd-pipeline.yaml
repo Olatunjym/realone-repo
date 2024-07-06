@@ -21,6 +21,7 @@ jobs:
 
     - name: Build with Maven
       run: mvn clean package -DskipTests
+      working-directory: ./SampleWebApp
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v1
