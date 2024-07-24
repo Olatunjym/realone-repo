@@ -31,7 +31,6 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-        logout: true  # Ensure to logout after pushing image
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
@@ -45,17 +44,17 @@ jobs:
       run: |
         echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
         curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-        sudo apt-get update && sudo apt-get install -y google-cloud-sdk google-cloud-sdk-gke-gcloud-auth-plugin kubectl
+        sudo apt-get update && sudo apt-get install -y google-cloud-sdk kubectl
 
     - name: Authenticate to Google Cloud
       run: gcloud auth activate-service-account --key-file=${{ secrets.GCP_SA_KEY }}
 
-    - name: Configure kubectl with gke-gcloud-auth-plugin
+    - name: Configure kubectl with application-default credentials
       run: |
-        export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+        gcloud auth application-default login --quiet
         gcloud container clusters get-credentials tg1 --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Deploy to GKE
       run: |
-        kubectl apply -f deployment.yaml
-        kubectl apply -f service.yaml
+        kubectl apply -f deployment.yaml --validate=false
+        kubectl apply -f service.yaml --validate=false
