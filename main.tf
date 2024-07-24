@@ -31,6 +31,7 @@ jobs:
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
+        logout: true  # Ensure to logout after pushing image
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v2
