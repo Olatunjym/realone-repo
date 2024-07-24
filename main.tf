@@ -49,8 +49,10 @@ jobs:
     - name: Authenticate to Google Cloud
       run: gcloud auth activate-service-account --key-file=${{ secrets.GCP_SA_KEY }}
 
-    - name: Configure kubectl
-      run: gcloud container clusters get-credentials tg1 --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
+    - name: Configure kubectl with gke-gcloud-auth-plugin
+      run: |
+        export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+        gcloud container clusters get-credentials tg1 --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Deploy to GKE
       run: |
