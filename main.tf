@@ -1,63 +1,68 @@
-provider "google" {
-  project = var.project_id
-  region  = var.region
-}
+name: CI/CD Pipeline
 
-resource "google_compute_network" "vpc_network" {
-  name = "my-vpc"
-}
+on:
+  push:
+    branches:
+      - main
 
-resource "google_compute_subnetwork" "public_subnet" {
-  name          = "public-subnet"
-  network       = google_compute_network.vpc_network.id
-  ip_cidr_range = "10.0.1.0/24"
-  region        = var.region
-}
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-resource "google_compute_subnetwork" "private_subnet" {
-  name          = "private-subnet"
-  network       = google_compute_network.vpc_network.id
-  ip_cidr_range = "10.0.2.0/24"
-  region        = var.region
-}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-resource "google_compute_instance" "web_server" {
-  name         = "web-server"
-  machine_type = "e2-medium"
-  zone         = "${var.region}-a"
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'temurin'
+        java-version: '11'
 
-  boot_disk {
-    initialize_params {
-      image = "debian-cloud/debian-11"
-    }
-  }
+    - name: Build with Maven
+      run: mvn clean package -DskipTests
+      working-directory: ./SampleWebApp
 
-  network_interface {
-    network       = google_compute_network.vpc_network.name
-    subnetwork    = google_compute_subnetwork.public_subnet.name
-    access_config {}
-  }
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
 
-  metadata_startup_script = <<-EOT
-    #!/bin/bash
-    apt-get update
-    apt-get install -y nginx
-    systemctl start nginx
-    EOT
+    - name: Login to DockerHub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
 
-  tags = ["web"]
-}
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: olatunjym/sample-web-app:latest
 
-resource "google_compute_firewall" "default-allow-http" {
-  name    = "default-allow-http"
-  network = google_compute_network.vpc_network.name
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: 'latest'
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-  source_ranges = ["0.0.0.0/0"]
+    - run: gcloud auth configure-docker
+      name: Authenticate Docker to Google Container Registry
 
-  target_tags = ["web"]
-}
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        sudo apt-get update
+        sudo apt-get install google-cloud-sdk-gke-gcloud-auth-plugin
+
+    - run: gcloud container clusters get-credentials tg1 --zone us-central1-a
+      name: Configure kubectl
+
+    - run: |
+        kubectl apply -f deployment.yaml
+        kubectl apply -f service.yaml
+      name: Deploy to GKE
