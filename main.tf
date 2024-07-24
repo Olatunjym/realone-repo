@@ -51,18 +51,22 @@ jobs:
         version: 'latest'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - run: gcloud auth configure-docker
-      name: Authenticate Docker to Google Container Registry
+    - name: Authenticate Docker to Google Container Registry
+      run: gcloud auth configure-docker
 
     - name: Install gke-gcloud-auth-plugin
       run: |
         sudo apt-get update
         sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
 
-    - run: gcloud container clusters get-credentials tg1 --zone us-central1-a
-      name: Configure kubectl
+    - name: Set KUBECONFIG environment variable
+      run: echo "export KUBECONFIG=$HOME/.kube/config" >> $HOME/.bashrc
+      shell: bash
 
-    - run: |
+    - name: Configure kubectl
+      run: gcloud container clusters get-credentials tg1 --zone us-central1-a
+
+    - name: Deploy to GKE
+      run: |
         kubectl apply -f deployment.yaml
         kubectl apply -f service.yaml
-      name: Deploy to GKE
