@@ -40,33 +40,23 @@ jobs:
         push: true
         tags: olatunjym/sample-web-app:latest
 
-    - name: Authenticate to Google Cloud
-      uses: google-github-actions/auth@v1
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
-
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v1
       with:
         version: 'latest'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Authenticate Docker to Google Container Registry
-      run: gcloud auth configure-docker
-
-    - name: Install gke-gcloud-auth-plugin
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
-
-    - name: Set KUBECONFIG environment variable
-      run: echo "export KUBECONFIG=$HOME/.kube/config" >> $HOME/.bashrc
-      shell: bash
+    - name: Authenticate to Google Cloud
+      run: gcloud auth activate-service-account --key-file=${{ secrets.GCP_SA_KEY }}
 
     - name: Configure kubectl
-      run: gcloud container clusters get-credentials tg1 --zone us-central1-a
+      run: |
+        gcloud container clusters get-credentials tg1 --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
+        kubectl config view --raw > $HOME/.kube/config
 
     - name: Deploy to GKE
+      env:
+        KUBECONFIG: $HOME/.kube/config
       run: |
         kubectl apply -f deployment.yaml
         kubectl apply -f service.yaml
