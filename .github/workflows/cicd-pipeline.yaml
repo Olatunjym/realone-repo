@@ -51,10 +51,13 @@ jobs:
         version: 'latest'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Authenticate Docker to Google Container Registry
-      run: gcloud auth configure-docker
+    - run: gcloud auth configure-docker
+      name: Authenticate Docker to Google Container Registry
 
-    - name: Configure kubectl
-      run: gcloud container clusters get-credentials tg1 --zone us-central1-a
+    - run: gcloud container clusters get-credentials tg1 --zone us-central1-a
+      name: Configure kubectl
 
-    - name
+    - run: |
+        kubectl apply -f deployment.yaml
+        kubectl apply -f service.yaml
+      name: Deploy to GKE
