@@ -49,14 +49,20 @@ jobs:
     - name: Authenticate to Google Cloud
       run: gcloud auth activate-service-account --key-file=${{ secrets.GCP_SA_KEY }}
 
-    - name: Configure kubectl
+    - name: Install gke-gcloud-auth-plugin
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
+
+    - name: Configure kubectl with gke-gcloud-auth-plugin
+      env:
+        USE_GKE_GCLOUD_AUTH_PLUGIN: True
       run: |
         gcloud container clusters get-credentials tg1 --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
-        kubectl config view --raw > $HOME/.kube/config
 
     - name: Deploy to GKE
       env:
-        KUBECONFIG: $HOME/.kube/config
+        USE_GKE_GCLOUD_AUTH_PLUGIN: True
       run: |
         kubectl apply -f deployment.yaml
         kubectl apply -f service.yaml
