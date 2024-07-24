@@ -57,7 +57,7 @@ jobs:
     - name: Install gke-gcloud-auth-plugin
       run: |
         sudo apt-get update
-        sudo apt-get install google-cloud-sdk-gke-gcloud-auth-plugin
+        sudo apt-get install -y google-cloud-sdk-gke-gcloud-auth-plugin
 
     - run: gcloud container clusters get-credentials tg1 --zone us-central1-a
       name: Configure kubectl
