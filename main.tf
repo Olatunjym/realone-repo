@@ -40,23 +40,20 @@ jobs:
         push: true
         tags: olatunjym/sample-web-app:latest
 
-    - name: Install Google Cloud SDK and Components
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y apt-transport-https ca-certificates gnupg
-        echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
-        curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
-        sudo apt-get update && sudo apt-get install -y google-cloud-sdk google-cloud-sdk-gke-gcloud-auth-plugin kubectl
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        version: 'latest'
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
 
     - name: Authenticate to Google Cloud
       run: gcloud auth activate-service-account --key-file=${{ secrets.GCP_SA_KEY }}
 
-    - name: Configure kubectl with gke-gcloud-auth-plugin
-      run: |
-        export USE_GKE_GCLOUD_AUTH_PLUGIN=True
-        gcloud container clusters get-credentials tg1 --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
+    - name: Configure kubectl
+      run: gcloud container clusters get-credentials tg1 --zone us-central1-a --project ${{ secrets.GCP_PROJECT_ID }}
 
-    - name: Deploy to GKE
+    - name: Deploy using gcloud
       run: |
-        kubectl apply -f deployment.yaml
-        kubectl apply -f service.yaml
+        gcloud container images list-tags gcr.io/${{ secrets.GCP_PROJECT_ID }}/sample-web-app
+        gcloud container images add-tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/sample-web-app:latest gcr.io/${{ secrets.GCP_PROJECT_ID }}/sample-web-app:$GITHUB_SHA
+        gcloud beta run deploy sample-web-app --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/sample-web-app:$GITHUB_SHA --region us-central1 --platform managed --allow-unauthenticated
